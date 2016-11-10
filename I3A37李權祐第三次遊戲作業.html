@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<style>
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+
+
+</style>
+</head>
+
+<body> 
+<div id="info">
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<audio id="collisionsound" style="display:none">
+  <source src="https://s9101142124.github.io/ex/%E4%BD%9C%E6%A5%AD%E7%94%A8%E9%A2%A8%E8%81%B2.mp3" type='audio/wav'>
+</audio>
+
+<audio id="soundtrack" autoplay loop style="display:none">
+  <source src="https://s9101142124.github.io/ex/%E4%BD%9C%E6%A5%AD%E7%94%A8%E9%9F%B3%E6%A8%82.mp3" type='audio/mp3'>
+</audio>
+<script>
+var camera, scene, renderer;
+var satellite, angle = 0;
+var mousePoint;
+var mouse = new THREE.Vector2();
+//var stats;
+var pos, vel, force;
+var clock = new THREE.Clock();
+var ball;
+var planeP = new THREE.Vector3(10, 0, 0);
+var planeN = new THREE.Vector3(0, 1, 0);
+var keyboard = new KeyboardState();
+var stArray = [];
+
+var baseS = 0;
+var counter = 0;
+var ballR = 3;
+var collisionSound, soundTrack;
+init();
+animate();
+
+function height(x) {
+  x = x + 50;
+  x = x % 100;
+  if (x >= 0 && x < 25)
+    return 39;
+  else if (x >= 25 && x < 50)
+    return 13;
+  else if (x >= 50 && x < 75)
+    return 0;
+  else
+    return 26;
+}
+
+function setUpStArray() {
+  for (var i = 0; i < 2; i++) {
+    var row = [];
+    for (var j = 0; j < 9; j++)
+      row.push(new THREE.Vector2(j * 0.117 + 0.0489, 1 - 0.125 * i - 0.635));
+    stArray.push(row);
+  }
+}
+
+function init() {
+  collisionSound = document.getElementById('collisionsound');
+  soundTrack = document.getElementById('soundtrack');
+  soundtrack.volume = 0.3;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
+  pos = new THREE.Vector3(-20, 40, 0);
+  vel = new THREE.Vector3(0, 0, 0);
+  //force = new THREE.Vector3(0, -90, 0);
+
+
+  /*
+    // STATS
+  	stats = new Stats();
+  	stats.domElement.style.position = 'absolute';
+  	stats.domElement.style.top = '0px';
+  	stats.domElement.style.zIndex = 100;
+  	document.body.appendChild( stats.domElement );	
+  */
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 100);
+  camera.position.z = 10;
+  scene.add(camera);
+
+  // what's in the scene? [depth]
+  // bordere (blue lines) [0]
+  // satellite (white circle) [1]
+  // mousePoint (red circle) [2]
+  // background (dark yellow quad) [3]
+  //
+  // all on XY plane: rely on polygonOffset to sort things out
+  // line object remains at frontmost
+
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  for (var k = 0; k < 5; k++) {
+    THREE.ImageUtils.crossOrigin = '';
+    texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/3IN0xnL.jpg');
+    texture.wrapS = THREE.RepeatWrapping;
+    // setting up texMat
+
+    // Plane with default texture coordinates [0,1]x[0,1]
+    var texMat = new THREE.MeshBasicMaterial({
+      map: texture
+    });
+    var floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), texMat);
+    scene.add(floor);
+    floor.position.x = k * 100;
+    window.addEventListener('resize', onWindowResize, false);
+  }
+
+  /*for (var k = 0; k < 5; k++) {
+    var ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 15), new THREE.MeshBasicMaterial({
+      color: 0xFFCCFF
+    }));
+    scene.add(ground);
+    ground.position.y = -42.5;
+    ground.position.x = k * 100;
+    window.addEventListener('resize', onWindowResize, false);
+  }*/
+
+
+
+
+  setUpStArray();
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(-10, -10, 0),
+    new THREE.Vector3(10, -10, 0),
+    new THREE.Vector3(10, 10, 0),
+    new THREE.Vector3(-10, 10, 0)
+  );
+  var face;
+  face = new THREE.Face3(0, 1, 2);
+  geometry.faces.push(face);
+  face = new THREE.Face3(0, 2, 3);
+  geometry.faces.push(face);
+
+  geometry.faceVertexUvs[0].push([stArray[1][0], stArray[1][1], stArray[0][1]]);
+  geometry.faceVertexUvs[0].push([stArray[1][0], stArray[0][1], stArray[0][0]]);
+
+  geometry.computeBoundingSphere();
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+  THREE.ImageUtils.crossOrigin = '';
+  texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/8hhBBQP.png');
+  texture.wrapS = THREE.RepeatWrapping;
+
+  // setting up texMat
+  var texMat1 = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true, // cutout texture: set transparent: true
+    side: THREE.DoubleSide
+  });
+  sprite = new THREE.Mesh(geometry, texMat1);
+  scene.add(sprite);
+
+
+  /* ball = new THREE.Mesh(new THREE.CircleGeometry(ballR, 20), new THREE.MeshBasicMaterial({
+     color: 0xffffff
+   }));
+   scene.add(ball);
+   ball.position.y = 30;*/
+
+  /*  var ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 10), new THREE.MeshBasicMaterial({
+      color: 0xff0000
+    }));
+    scene.add(ground);
+    ground.position.y = -45;
+
+    window.addEventListener('resize', onWindowResize, false);*/
+  //  window.addEventListener('mousedown', onDocumentMouseDown, false);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function computeForce() {
+  //thrust
+  if (keyboard.down("up")) {
+    force = new THREE.Vector3(0, 1, 0).multiplyScalar(10000);
+  } else if (keyboard.down("left")) {
+    vel.set(0, 0, 0);
+    force = new THREE.Vector3(1, 0, 0).multiplyScalar(-3000);
+  } else if (keyboard.down("right")) {
+    vel.set(0, 0, 0);
+    force = new THREE.Vector3(1, 0, 0).multiplyScalar(3000);
+  } else {
+    force.add(new THREE.Vector3(0, 0, 0));
+  }
+}
+
+
+
+function spriteAnimate() {
+  var geometry = sprite.geometry;
+  var st0 = stArray[1][baseS];
+  var st1 = stArray[1][baseS + 1];
+  var st2 = stArray[0][baseS + 1];
+  var st3 = stArray[0][baseS];
+
+  geometry.faceVertexUvs[0] = [];
+  geometry.faceVertexUvs[0].push([st0, st1, st2]);
+  geometry.faceVertexUvs[0].push([st0, st2, st3]);
+  geometry.uvsNeedUpdate = true;
+
+  baseS = (baseS + 1) % 5;
+}
+
+
+function animate() {
+
+  counter++;
+
+  if (counter === 0)
+    spriteAnimate();
+
+  if (keyboard.down("space")) {
+    vel.set(0, 0, 0);
+  }
+
+  keyboard.update();
+
+
+  var dt = clock.getDelta();
+
+
+  // force: add gravity first
+  if (pos.y + 30 > ballR + height(pos.x)) { // if contact, add contact force
+    force = new THREE.Vector3(0, -360, 0);
+  }
+  if (pos.y + 30 <= ballR + height(pos.x)) { // if contact, add contact force
+    force.add(new THREE.Vector3(0, 360, 0));
+  }
+  computeForce();
+
+  // then do Euler's
+  vel.add(force.clone().multiplyScalar(dt));
+  if (keyboard.down("space")) {
+    vel.set(0, 0, 0);
+  }
+
+  if (vel.x > 0) {
+    if (counter % 4 === 0) {
+      spriteAnimate();
+    }
+    sprite.rotation.y = 0
+  } else if (vel.x < 0) {
+    if (counter % 4 === 0) {
+      spriteAnimate();
+    }
+    sprite.rotation.y = Math.PI;
+  }
+  pos.add(vel.clone().multiplyScalar(dt));
+  camera.position.x = pos.x;
+  if (camera.position.x < 0) {
+    camera.position.x = 0;
+  } else if (camera.position.x > 400) {
+    camera.position.x = 400;
+  } else {
+
+  }
+  if (sprite.position.x > -25 && pos.x < -25) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = -24.5;
+    }
+  }
+  if (sprite.position.x > 0 && pos.x < 0) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 0.5;
+    }
+  }
+  if (sprite.position.x < 25 && pos.x >= 25) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 24.5;
+    }
+  }
+  if (sprite.position.x < 50 && pos.x >= 50) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 49.5;
+    }
+  }
+
+  if (sprite.position.x > 75 && pos.x < 75) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 75.5;
+    }
+  }
+  if (sprite.position.x > 100 && pos.x < 100) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 100.5;
+    }
+  }
+  if (sprite.position.x < 125 && pos.x >= 125) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 124.5;
+    }
+  }
+  if (sprite.position.x < 150 && pos.x >= 150) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 149.5;
+    }
+  }
+  if (sprite.position.x > 175 && pos.x < 175) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 175.5;
+    }
+  }
+  if (sprite.position.x > 200 && pos.x < 200) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 200.5;
+    }
+  }
+  if (sprite.position.x < 225 && pos.x >= 225) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 224.5;
+    }
+  }
+  if (sprite.position.x < 250 && pos.x >= 250) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 249.5;
+    }
+  }
+  if (sprite.position.x > 275 && pos.x < 275) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 275.5;
+    }
+  }
+  if (sprite.position.x > 300 && pos.x < 300) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 300.5;
+    }
+  }
+  if (sprite.position.x < 325 && pos.x >= 325) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 324.5;
+    }
+  }
+  if (sprite.position.x < 350 && pos.x >= 350) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 349.5;
+    }
+  }
+  if (sprite.position.x > 375 && pos.x < 375) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 375.5;
+    }
+  }
+  if (sprite.position.x > 400 && pos.x < 400) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 400.5;
+    }
+  }
+  if (sprite.position.x < 425 && pos.x >= 425) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 424.5;
+    }
+  }
+  if (sprite.position.x < 450 && pos.x >= 450) {
+    if (pos.y + 30 <= ballR + height(pos.x)) {
+      vel.x = 0;
+      vel.y = 0;
+      pos.x = 449.5;
+    }
+  }
+  /*else if ((pos.x) % 100 > 50 && (sprite.position.x) % 100 <= 50 && pos.y + 30 <= ballR + height(pos.x)) {
+    pos.x = pos.x - pos.x % 100 + 50;
+  }
+  else if ((pos.x) % 100 <= 75 && (sprite.position.x) % 100 > 75 && pos.y + 30 <= ballR + height(pos.x)) {
+    pos.x = pos.x - pos.x % 100 - 25;
+  }*/
+
+  sprite.position.copy(pos);
+  if (pos.x < -47) {
+    sprite.position.x = -45;
+    vel.x = 0;
+  } else if (pos.x > 447) {
+    sprite.position.x = 446;
+    vel.x = 0;
+  } else {
+
+  }
+
+
+  // collision
+  // if (x-p).n < 0 then hit
+  /*
+  if (pos.clone().sub(planeP).dot(planeN) < 0) {
+  	pos.y = 30;
+    vel.set (0,0,0);
+    }
+    */
+  // bounce back
+	if (pos.y + 30 > ballR + height(pos.x) + 10) {
+    collisionSound.play();
+   	collisionSound.volume = 1;
+  }
+  if (pos.y + 30 <= ballR + height(pos.x)) {
+    //pos.y = 0;
+    vel.y *= -.3;
+    collisionSound.volume = 0;
+  }
+
+  requestAnimationFrame(animate);
+  render();
+}
+
+
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+window.focus();
+
+
+</script>
+
+</body>
+
+</html>
