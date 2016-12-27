@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<style>
+
+	body {
+	  background-color: #fff;
+	  color: #111;
+	  margin: 0px;
+	  overflow: hidden;
+	  font-family: Monospace;
+	  font-size: 20px;
+	}
+	
+	#info {
+	  position: absolute;
+	  top: 0px;
+	  width: 100%;
+	  padding: 5px;
+	  text-align: center;
+	  color: #ffff00
+	}
+	
+	a {
+	  color: #00ffff
+	}
+	
+	strong {
+	  color: red
+	}
+	
+	#container {
+	  z-index: 0;
+	  left: 0px;
+	  top: 0px;
+	  overflow: hidden;
+	  position: absolute;
+	  width: 100%;
+	  height: 100%;
+	}
+#gui {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    //height: 350px;
+}
+
+</style>
+</head>
+
+<body> 
+
+<div id="info">
+  Keyframe Setter
+  <br>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+<script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js"></script>
+
+
+
+<script>
+
+var scene, renderer, camera;
+var controls;
+var torso, lowerArm, upperArm;
+var clock = new THREE.Clock();
+
+var gcontrols;
+
+
+var dt = 0;
+
+var keys = [
+[0, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.015, [-.1588, -.187, 1.114, -2.072, 0.01, .1588, .187, 1.114, -2.072]],
+[0.025, [-.467, -.324, 0.772, -1.94, 0.01, .467, .324, 0.772, -1.94]],
+[0.035, [-0.86, -0.666, -0.05, -1.211, 0.01, 0.86, 0.666, -0.05, -1.211]],
+[0.04, [-.156, .361, .224, -0.747, 0.01, .156, -.361, .224, -0.747]],
+[0.05, [-.156, .087, .224, -1.1277, 0.05, .156, -.087, .224, -1.1277]],
+[0.06, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.08, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.095, [-.1588, -.187, 1.114, -2.072, 0.01, .156, -.087, .224, -1.1277]],
+[0.105, [-.467, -.324, 0.772, -1.94, 0.01, .156, -.087, .224, -1.1277]],
+[0.115, [-0.86, -0.666, -0.05, -1.211, 0.01, .156, -.087, .224, -1.1277]],
+[0.12, [-.156, .361, .224, -0.747, 0.01, .156, -.087, .224, -1.1277]],
+[0.13, [-.156, .087, .224, -1.1277, 0.05, .156, -.087, .224, -1.1277]],
+[0.14, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.15, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.165, [-.1588, -.187, 1.114, -2.072, 0.01, .156, -.087, .224, -1.1277]],
+[0.175, [-.467, -.324, 0.772, -1.94, 0.01, .156, -.087, .224, -1.1277]],
+[0.185, [-0.86, -0.666, -0.05, -1.211, 0.01, .156, -.087, .224, -1.1277]],
+[0.19, [-.156, .361, .224, -0.747, 0.01, .156, -.087, .224, -1.1277]],
+[0.2, [-.156, .087, .224, -1.1277, 0.05, .156, -.087, .224, -1.1277]],
+[0.21, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.22, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+
+[0.235, [-.1588, -.187, 1.114, -2.072, 0.01, .156, -.087, .224, -1.1277]],
+[0.245, [-.467, -.324, 0.772, -1.94, 0.01, .156, -.087, .224, -1.1277]],
+[0.255, [-0.86, -0.666, -0.05, -1.211, 0.01, .156, -.087, .224, -1.1277]],
+[0.26, [-.156, .361, .224, -0.747, 0.01, .156, -.087, .224, -1.1277]],
+[0.27, [-.156, .087, .224, -1.1277, 0.05, .156, -.087, .224, -1.1277]],
+[0.28, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+[0.29, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+
+[0.305, [-.156, .087, .224, -1.1277, 0.01, .1588, .187, 1.114, -2.072]],
+[0.315, [-.156, .087, .224, -1.1277, 0.01, .467, .324, 0.772, -1.94]],
+[0.325, [-.156, .087, .224, -1.1277, 0.01, 0.86, 0.666, -0.05, -1.211]],
+[0.33, [-.156, .087, .224, -1.1277, 0.01, .156, -.361, .224, -0.747]],
+[0.34, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+
+[0.355, [-.1588, -.187, 1.114, -2.072, 0.21, .156, -.087, .224, -1.1277]],
+[0.365, [-.467, -.324, 0.772, -1.94, 0.41, .156, -.087, .224, -1.1277]],
+[0.375, [-0.86, -0.666, -0.05, -1.211, 0.81, .156, -.087, .224, -1.1277]],
+[0.38, [-.156, .361, .224, -0.747, 1.51, .126, -.087, .224, -1.1277]],
+[0.39, [-.156, .087, .224, -1.1277, 1.55, .156, -.087, .224, -1.1277]],
+[0.40, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.41, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.425, [-.1588, -.187, 1.114, -2.072, 1.51, .156, -.087, .224, -1.1277]],
+[0.435, [-.467, -.324, 0.772, -1.94, 1.51, .156, -.087, .224, -1.1277]],
+[0.445, [-0.86, -0.666, -0.05, -1.211, 1.51, .156, -.087, .224, -1.1277]],
+[0.45, [-.156, .361, .224, -0.747, 1.51, .156, -.087, .224, -1.1277]],
+[0.46, [-.156, .087, .224, -1.1277, 1.55, .156, -.087, .224, -1.1277]],
+[0.47, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.48, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.495, [-.1588, -.187, 1.114, -2.072, 1.51, .156, -.087, .224, -1.1277]],
+[0.505, [-.467, -.324, 0.772, -1.94, 1.51, .156, -.087, .224, -1.1277]],
+[0.515, [-0.86, -0.666, -0.05, -1.211, 1.51, .156, -.087, .224, -1.1277]],
+[0.52, [-.156, .361, .224, -0.747, 1.51, .156, -.087, .224, -1.1277]],
+[0.53, [-.156, .087, .224, -1.1277, 1.55, .156, -.087, .224, -1.1277]],
+[0.54, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.55, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+[0.565, [-.1588, -.187, 1.114, -2.072, 1.51, .156, -.087, .224, -1.1277]],
+[0.575, [-.467, -.324, 0.772, -1.94, 1.51, .156, -.087, .224, -1.1277]],
+[0.585, [-0.86, -0.666, -0.05, -1.211, 1.51, .156, -.087, .224, -1.1277]],
+[0.59, [-.156, .361, .224, -0.747, 1.51, .156, -.087, .224, -1.1277]],
+[0.60, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+
+[0.615, [-.156, .087, .224, -1.1277, 1.51, .1588, .187, 1.114, -2.072]],
+[0.625, [-.156, .087, .224, -1.1277, 1.51, .467, .324, 0.772, -1.94]],
+[0.635, [-.156, .087, .224, -1.1277, 1.51, 0.86, 0.666, -0.05, -1.211]],
+[0.64, [-.156, .087, .224, -1.1277, 1.51, .156, -.361, .224, -0.747]],
+[0.65, [-.156, .087, .224, -1.1277, 1.51, .156, -.087, .224, -1.1277]],
+
+[0.665, [-.1588, -.187, 1.114, -2.072, 1.71, .156, -.087, .224, -1.1277]],
+[0.675, [-.467, -.324, 0.772, -1.94, 1.91, .156, -.087, .224, -1.1277]],
+[0.685, [-0.86, -0.666, -0.05, -1.211, 2.31, .156, -.087, .224, -1.1277]],
+[0.69, [-.156, .361, .224, -0.747, 2.71, .156, -.087, .224, -1.1277]],
+[0.7, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.71, [-.156, .087, .224, -1.1277, 3.0, .156, -.087, .224, -1.1277]],
+[0.72, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+
+[0.735, [-.1588, -.187, 1.114, -2.072, 2.95, .156, -.087, .224, -1.1277]],
+[0.745, [-.467, -.324, 0.772, -1.94, 2.95, .156, -.087, .224, -1.1277]],
+[0.755, [-0.86, -0.666, -0.05, -1.211, 2.95, .156, -.087, .224, -1.1277]],
+[0.76, [-.156, .361, .224, -0.747, 2.95, .156, -.087, .224, -1.1277]],
+[0.77, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.78, [-.156, .087, .224, -1.1277, 3.0, .156, -.087, .224, -1.1277]],
+[0.79, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.805, [-.1588, -.187, 1.114, -2.072, 2.95, .156, -.087, .224, -1.1277]],
+[0.815, [-.467, -.324, 0.772, -1.94, 2.95, .156, -.087, .224, -1.1277]],
+[0.825, [-0.86, -0.666, -0.05, -1.211, 2.95, .156, -.087, .224, -1.1277]],
+[0.83, [-.156, .361, .224, -0.747, 2.95, .156, -.087, .224, -1.1277]],
+[0.84, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.85, [-.156, .087, .224, -1.1277, 3.0, .156, -.087, .224, -1.1277]],
+[0.86, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.875, [-.1588, -.187, 1.114, -2.072, 2.95, .156, -.087, .224, -1.1277]],
+[0.885, [-.467, -.324, 0.772, -1.94, 2.95, .156, -.087, .224, -1.1277]],
+[0.895, [-0.86, -0.666, -0.05, -1.211, 2.95, .156, -.087, .224, -1.1277]],
+[0.90, [-.156, .361, .224, -0.747, 2.95, .156, -.087, .224, -1.1277]],
+[0.91, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+
+[0.925, [-.156, .087, .224, -1.1277, 2.95, .1588, .187, 1.114, -2.072]],
+[0.935, [-.156, .087, .224, -1.1277, 2.95, .467, .324, 0.772, -1.94]],
+[0.945, [-.156, .087, .224, -1.1277, 2.95, 0.86, 0.666, -0.05, -1.211]],
+[0.95, [-.156, .087, .224, -1.1277, 2.95, .156, -.361, .224, -0.747]],
+[0.96, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+[0.965, [-.156, .087, .224, -1.1277, 2.9, .156, -.087, .224, -1.1277]],
+[0.97, [-.156, .087, .224, -1.1277, 2.95, .156, -.087, .224, -1.1277]],
+
+[1, [-.156, .087, .224, -1.1277, 0.01, .156, -.087, .224, -1.1277]],
+];
+var T = 20;
+var clock = new THREE.Clock();
+var ts = clock.getElapsedTime();
+var intKey=[];
+
+/////////////////////////////////////////////////////
+
+init();
+animate();
+
+
+function init() {
+	collisionSound = document.getElementById('collisionsound');
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x888888);
+
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
+  camera.position.y = 160;
+  camera.position.z = 400;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  scene.add(camera);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  var boxGeometry = new THREE.BoxGeometry(50, 100, 30);
+  torso = new THREE.Object3D();
+  var bodyMesh = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  bodyMesh.position.set(0, 50, 0);
+  torso.add(bodyMesh);
+  scene.add(torso);
+  //torso.position.set(0, 0, -35);
+  
+  var geometry = new THREE.CylinderGeometry( 40, 40, 30, 320 );
+  var cylinder = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial() );
+  torso.add( cylinder );
+  cylinder.position.set(0,50,55);
+  cylinder.rotation.z = Math.PI/2;
+  
+  var geometry = new THREE.CylinderGeometry( 23, 23, 30, 320 );
+  var cylinder = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial() );
+  torso.add( cylinder );
+  cylinder.position.set(0,123,0);
+  cylinder.rotation.x = Math.PI/2;
+  
+  var boxGeometry = new THREE.BoxGeometry(15, 60, 15);
+  var footMesh = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  footMesh.position.set(-10, -30, 0);
+  torso.add( footMesh );
+  
+  var boxGeometry = new THREE.BoxGeometry(15, 60, 15);
+  var footMeshR = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  footMeshR.position.set(10, -30, 0);
+  torso.add( footMeshR );
+  
+
+  var boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  var arm = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  var armR = new  THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  upperArm = new THREE.Object3D();
+  upperArm.add(arm);
+  upperArmR = new THREE.Object3D();
+  upperArmR.add(armR);
+  arm.position.set(-5, -20, 0);
+  torso.add(upperArm);
+  armR.position.set(5, -20, 0);
+  torso.add(upperArmR);
+  upperArm.position.set(-25, 100, 0);
+  upperArmR.position.set(25, 100, 0);
+
+  boxGeometry = new THREE.BoxGeometry(10, 40, 10);
+  arm2 = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  lowerArm = new THREE.Object3D();
+  arm2R = new THREE.Mesh(boxGeometry, new THREE.MeshNormalMaterial());
+  lowerArm = new THREE.Object3D();
+  lowerArm.position.set(0, -40, 0);
+  upperArm.add(lowerArm);
+  lowerArm.add(arm2);
+  arm2.position.set(-5, -20, 0);
+  lowerArmR = new THREE.Object3D();
+  lowerArmR.position.set(0, -40, 0);
+  upperArmR.add(lowerArmR);
+  lowerArmR.add(arm2R);
+  arm2R.position.set(5, -20, 0);
+  
+  
+  var geometry = new THREE.CylinderGeometry( 3, 3, 50, 32 );
+  var stick = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial() );
+  stick.rotation.x = Math.PI/2;
+  stick.position.set(-5, -30, 25)
+  lowerArm.add(stick);
+  
+  var geometry = new THREE.CylinderGeometry( 3, 3, 50, 32 );
+  var stickR = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial() );
+  stickR.rotation.x = Math.PI/2;
+  stickR.position.set(5, -30, 25)
+  lowerArmR.add(stickR);
+  
+  torso.position.set(0, 60, 0);
+  
+
+  var gridXZ = new THREE.GridHelper(100, 10);
+  gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+  scene.add(gridXZ);
+
+	window.addEventListener('resize', onWindowResize, false);
+  ///////////////////////////////////////////////////
+  gcontrols = {
+  	shoulderZ: 0.01,
+    shoulderY: 0.1,
+    shoulderX: 0.1,
+    elbowX: 0.1,
+    torsoY: 0.1,
+    shoulderZR: 0.01,
+    shoulderYR: 0.1,
+    shoulderXR: 0.1,
+    elbowXR: 0.1,
+  };
+  
+  gui = new dat.GUI({load: loadJSON(), preset:'Default'});
+  gui.remember (gcontrols);
+  
+      gui.domElement.id = 'gui';
+  gui.add (gcontrols, 'shoulderZ', -3.14, 3);
+  gui.add (gcontrols, 'shoulderY', -3.2, 3);
+  gui.add (gcontrols, 'shoulderX', -3.2, 3);
+  gui.add (gcontrols, 'elbowX', -3, 3);
+	gui.add (gcontrols, 'torsoY', -3,3);
+  gui.add (gcontrols, 'shoulderZR', -3.14, 3);
+  gui.add (gcontrols, 'shoulderYR', -3.2, 3);
+  gui.add (gcontrols, 'shoulderXR', -3.2, 3);
+  gui.add (gcontrols, 'elbowXR', -3, 3);
+
+}
+
+function loadJSON() {
+	return {
+  "preset": "Default",
+  "closed": false,
+  "remembered": {
+    "Default": {  // for X.XX display
+      "0": {
+        "shoulderZ": 0.01,
+        "shoulderY": 0.01,
+        "shoulderX": 0.01,
+        "elbowX": 0.01,
+        "torsoY": 0.01
+      }
+    },
+    "standby": {
+      "0": {
+        "shoulderZ": -.157,
+        "shoulderY": -.05,
+        "shoulderX": -.39,
+        "elbowX": -1.68,
+        "torsoY": 0
+      }
+    },
+    "start": {
+      "0": {
+        "shoulderZ": -0.42823141014175103,
+        "shoulderY": -1.625495924618134,
+        "shoulderX": 0.496661742200903,
+        "elbowX": -2.01,
+        "torsoY": -0.3500632672394959
+      }
+    }
+  },
+  "folders": {}
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  update();
+  render();
+}
+
+function update() {
+  controls.update();
+  keyframe(clock.getElapsedTime());
+}
+
+function onWindowResize() {
+  var width = window.innerWidth,
+    height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+function keyframe (t) {
+	var s = ((t - ts)%T)/T;
+  console.log (s);
+  
+  for (var i = 0; i < keys.length; i++) {
+  	if (keys[i][0] > s) break;
+  }
+  
+  // take i-1
+  var ii = i-1;
+  var a = (s - keys[ii][0]) / (keys[ii+1][0] - keys[ii][0]);
+  intKey = []
+  for (var j = 0; j < 9; j++) {
+  	intKey.push (keys[ii][1][j] * (1-a) + keys[ii+1][1][j]*a);
+  }
+  console.log (intKey);
+  
+}
+
+function render() {
+  upperArm.rotation.order = 'ZXY';
+	
+  upperArm.rotation.z = gcontrols.shoulderZ; 
+  upperArm.rotation.y = gcontrols.shoulderY; 
+  upperArm.rotation.x = gcontrols.shoulderX; 
+
+  lowerArm.rotation.x = gcontrols.elbowX; 
+  
+  upperArmR.rotation.order = 'ZXY';
+	
+  upperArmR.rotation.z = gcontrols.shoulderZR; 
+  upperArmR.rotation.y = gcontrols.shoulderYR; 
+  upperArmR.rotation.x = gcontrols.shoulderXR; 
+
+  lowerArmR.rotation.x = gcontrols.elbowXR; 
+  torso.rotation.y = gcontrols.torsoY;
+  
+
+
+  upperArm.rotation.z = intKey[0]; 
+  upperArm.rotation.y = intKey[1]; 
+  upperArm.rotation.x = intKey[2]; 
+
+  lowerArm.rotation.x = intKey[3]; 
+  torso.rotation.y = intKey[4];
+  
+  upperArmR.rotation.z = intKey[5]; 
+  upperArmR.rotation.y = intKey[6]; 
+  upperArmR.rotation.x = intKey[7]; 
+
+  lowerArmR.rotation.x = intKey[8]; 
+
+  renderer.render(scene, camera);
+}
+
+
+</script>
+</body>
+
+</html>
